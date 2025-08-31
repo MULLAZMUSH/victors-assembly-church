@@ -54,12 +54,14 @@ app.use((err, req, res, next) => {
 
 // 🔹 MongoDB Connection
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI ||'mongodb://localhost:27017/victors-assembly-church';
-rembl
+
+// 🔹 Hardcoded MongoDB Atlas URI for Render free tier
+const MONGO_URI = || 'mongodb+srv://mullaz1_db_user:bJO2XJLIXjByePXF@cluster0.qebzav8.mongodb.net/victors-assembly-church?retryWrites=true&w=majority';
+
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
-    console.log('✅ Connected to MongoDB Atlas');
+    console.log('✅ MongoDB connected');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
