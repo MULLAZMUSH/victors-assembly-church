@@ -11,4 +11,4 @@ const eventSchema = new mongoose.Schema({
   notifyUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // users to notify
 }, { timestamps: true });
 
-module.exports = mongoose.model('Event', eventSchema);
+module.exports = mongoose.model('Event', EventSchema);
