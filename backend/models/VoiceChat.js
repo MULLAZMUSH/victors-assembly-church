@@ -7,5 +7,5 @@ const voiceChatSchema = new mongoose.Schema({
   duration: { type: Number } // in seconds
 }, { timestamps: true });
 
-// Correct export
+// Export the model with exact capitalization
 module.exports = mongoose.model('VoiceChat', voiceChatSchema);
