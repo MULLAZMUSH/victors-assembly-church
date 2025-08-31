@@ -54,7 +54,7 @@ app.use((err, req, res, next) => {
 
 // 🔹 MongoDB Connection
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/victors-assembly-church';
+const MONGO_URI = process.env.MONGO_URI ||'mongodb://localhost:27017/victors-assembly-church';
 rembl
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
