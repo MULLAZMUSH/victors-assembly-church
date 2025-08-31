@@ -1,14 +1,28 @@
+// backend/models/Event.js
 const mongoose = require('mongoose');
 
-const eventSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: String,
-  date: { type: Date, required: true },
-  location: { type: String, default: 'Online / TBD' }, // optional
-  recurring: { type: String, enum: ['none', 'daily', 'weekly', 'monthly'], default: 'none' }, // recurring events
-  attendees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], 
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  notifyUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // users to notify
-}, { timestamps: true });
+// ───── Event Schema ─────
+const EventSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    description: { type: String },
+    date: { type: Date, required: true },
+    location: { type: String, default: 'Online / TBD' },
+    recurring: { 
+      type: String, 
+      enum: ['none', 'daily', 'weekly', 'monthly'], 
+      default: 'none' 
+    },
+    attendees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    notifyUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+  },
+  { timestamps: true }
+);
 
+<<<<<<< HEAD:backend/models/Event.js
+=======
+// ───── Export Model ─────
+>>>>>>> fe5cb77 (Fix Event.js module):backend/models/event.js
 module.exports = mongoose.model('Event', EventSchema);
+
