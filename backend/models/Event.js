@@ -20,9 +20,5 @@ const EventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-<<<<<<< HEAD:backend/models/Event.js
-=======
 // ───── Export Model ─────
->>>>>>> fe5cb77 (Fix Event.js module):backend/models/event.js
 module.exports = mongoose.model('Event', EventSchema);
-
