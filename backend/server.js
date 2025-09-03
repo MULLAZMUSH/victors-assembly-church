@@ -52,10 +52,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 🔹 MongoDB Connection
+// 🔹 Port & MongoDB URI
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://mullaz1_db_user:bJO2XJLIXjByePXF@cluster0.qebzav8.mongodb.net/victors-assembly-church?retryWrites=true&w=majority';
+const MONGO_URI = process.env.MONGO_URI;
 
+// Validate Mongo URI
+if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
+  console.error("❌ Invalid or missing MongoDB URI. Make sure MONGO_URI is set in your environment variables.");
+  process.exit(1);
+}
+
+// 🔹 MongoDB Connection
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
@@ -65,7 +72,7 @@ mongoose
     });
   })
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
 
