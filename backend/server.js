@@ -7,25 +7,29 @@ const path = require('path');
 // 🔹 Initialize Express
 const app = express();
 
-// 🔹 Import route files
-const authRoutes      = require('./routes/auth');
-const eventRoutes     = require('./routes/events');
-const messageRoutes   = require('./routes/messages');
-const profileRoutes   = require('./routes/profiles');
-const voiceChatRoutes = require('./routes/voiceChats');
-const testApiRoutes = require('./routes/testApi');
-
-// …after other `app.use()` calls
-app.use('/api/test', testApiRoutes);
-
-
-// 🔹 Middleware
+// 🔹 Middleware (must come before routes)
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Optional: serve uploads folder if using file uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// 🔹 Import route files
+const authRoutes      = require('./routes/auth');
+const eventRoutes     = require('./routes/events');
+const messageRoutes   = require('./routes/messages');
+const profileRoutes   = require('./routes/profiles');
+const voiceChatRoutes = require('./routes/voiceChats');
+const testApiRoutes   = require('./routes/testApi');
+
+// 🔹 API Routes
+app.use('/api/test', testApiRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/profiles', profileRoutes);
+app.use('/api/voiceChats', voiceChatRoutes);
 
 // 🔹 Health Check
 app.get('/health', (req, res) => {
@@ -36,13 +40,6 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.send('API is live and running!');
 });
-
-// 🔹 API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/profiles', profileRoutes);
-app.use('/api/voiceChats', voiceChatRoutes);
 
 // 🔹 404 Fallback Route
 app.use((req, res) => {
@@ -69,7 +66,7 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
 
 // 🔹 MongoDB Connection
 mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(MONGO_URI) // no need for deprecated options in Mongoose v7+
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
     app.listen(PORT, () => {
