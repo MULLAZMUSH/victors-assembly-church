@@ -13,6 +13,11 @@ const eventRoutes     = require('./routes/events');
 const messageRoutes   = require('./routes/messages');
 const profileRoutes   = require('./routes/profiles');
 const voiceChatRoutes = require('./routes/voiceChats');
+const testApiRoutes = require('./routes/testApi');
+
+// …after other `app.use()` calls
+app.use('/api/test', testApiRoutes);
+
 
 // 🔹 Middleware
 app.use(cors());
