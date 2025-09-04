@@ -14,13 +14,11 @@ const registerLimiter = rateLimit({
   max: 10,
   message: 'Too many signup attempts from this IP, please try again later.'
 });
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: 'Too many login attempts, please try again later.'
 });
-
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
@@ -60,31 +58,39 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   if (existingUser) return res.status(400).json({ error: 'One of the emails is already in use' });
 
   const user = await User.create({ name, emails, password, picture, verified: false });
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${token}`;
-  console.log(`✅ Verification link for ${emails.join(', ')}: ${url}`);
 
-  res.json({ message: 'Registration successful! Check server logs for verification link.' });
+  // Create JWT verification token
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${token}`;
+
+  // Log verification link clearly for Render logs
+  console.log(`\n✅ New user registered: ${emails.join(', ')}`);
+  console.log(`🔗 Verification link: ${verifyUrl}\n`);
+
+  res.json({
+    message: 'Registration successful! Verification link logged on server console.',
+    emails: user.emails
+  });
 }));
 
 // ───── GET /verify/:token ─────
 router.get('/verify/:token', asyncHandler(async (req, res) => {
   const { token } = req.params;
-  if (!token) return res.status(400).send('Token is required');
+  if (!token) return res.status(400).json({ error: 'Token is required' });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user) return res.status(404).send('User not found');
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (user.verified) return res.send('Email already verified.');
+    if (user.verified) return res.json({ message: 'Email already verified.' });
 
     user.verified = true;
     await user.save();
-    res.send('Email verified successfully! You can now log in.');
+    res.json({ message: 'Email verified successfully! You can now log in.' });
   } catch (err) {
     console.error('Verify token error:', err.message);
-    res.status(400).send('Invalid or expired token');
+    res.status(400).json({ error: 'Invalid or expired token' });
   }
 }));
 
@@ -109,9 +115,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(async (req, 
   const user = await User.findOne({ emails: email });
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-  user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+  const resetToken = user.generatePasswordReset();
   await user.save();
 
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
@@ -136,7 +140,7 @@ router.post('/reset-password/:token', asyncHandler(async (req, res) => {
 
     if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
 
-    user.password = password; // will be hashed via schema middleware
+    user.password = password; // hashed by schema middleware
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
