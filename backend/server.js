@@ -64,21 +64,34 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
   process.exit(1);
 }
 
-// 🔹 Utility to log all mounted routes
+// 🔹 Utility to log all mounted routes (safe + clean)
 const listRoutes = (appInstance) => {
+  if (!appInstance._router || !appInstance._router.stack) {
+    console.log('⚠️ No routes found');
+    return;
+  }
+
   console.log('📌 Mounted Routes:');
   appInstance._router.stack.forEach(middleware => {
     if (middleware.route) {
-      // Routes directly on app
-      const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+      // Direct routes on app
+      const methods = Object.keys(middleware.route.methods)
+        .map(m => m.toUpperCase())
+        .join(', ');
       console.log(`  ${methods.padEnd(10)} ${middleware.route.path}`);
-    } else if (middleware.name === 'router') {
-      // Router middleware
+    } else if (middleware.name === 'router' && middleware.regexp) {
+      const basePath = middleware.regexp.source
+        .replace('^\\', '/')
+        .replace('\\/?(?=\\/|$)', '') // cleanup regex
+        .replace('^', '')
+        .replace('(?:\\/)?$', '')
+        .replace('\\', '');
       middleware.handle.stack.forEach(handler => {
-        const routePath = handler.route ? handler.route.path : '';
-        if (routePath) {
-          const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
-          console.log(`  ${methods.padEnd(10)} ${middleware.regexp} → ${routePath}`);
+        if (handler.route) {
+          const methods = Object.keys(handler.route.methods)
+            .map(m => m.toUpperCase())
+            .join(', ');
+          console.log(`  ${methods.padEnd(10)} ${basePath}${handler.route.path}`);
         }
       });
     }
@@ -92,7 +105,7 @@ mongoose
     console.log('✅ Connected to MongoDB Atlas');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      listRoutes(app); // Log all routes after server starts
+      listRoutes(app); // ✅ Log all routes on startup
     });
   })
   .catch(err => {
