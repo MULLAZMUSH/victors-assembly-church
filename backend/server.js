@@ -7,13 +7,10 @@ const path = require('path');
 // 🔹 Initialize Express
 const app = express();
 
-// 🔹 Middleware (must come before routes)
+// 🔹 Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Optional: serve uploads folder if using file uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 🔹 Import route files
 const authRoutes      = require('./routes/auth');
@@ -23,13 +20,16 @@ const profileRoutes   = require('./routes/profiles');
 const voiceChatRoutes = require('./routes/voiceChats');
 const testApiRoutes   = require('./routes/testApi');
 
-// 🔹 API Routes
-app.use('/api/test', testApiRoutes);
+// 🔹 Attach routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/voiceChats', voiceChatRoutes);
+app.use('/api/test', testApiRoutes);
+
+// 🔹 Optional: serve uploads folder if using file uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 🔹 Health Check
 app.get('/health', (req, res) => {
@@ -64,13 +64,35 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
   process.exit(1);
 }
 
-// 🔹 MongoDB Connection
+// 🔹 Utility to log all mounted routes
+const listRoutes = (appInstance) => {
+  console.log('📌 Mounted Routes:');
+  appInstance._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      // Routes directly on app
+      const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+      console.log(`  ${methods.padEnd(10)} ${middleware.route.path}`);
+    } else if (middleware.name === 'router') {
+      // Router middleware
+      middleware.handle.stack.forEach(handler => {
+        const routePath = handler.route ? handler.route.path : '';
+        if (routePath) {
+          const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
+          console.log(`  ${methods.padEnd(10)} ${middleware.regexp} → ${routePath}`);
+        }
+      });
+    }
+  });
+};
+
+// 🔹 MongoDB Connection + Start Server
 mongoose
-  .connect(MONGO_URI) // no need for deprecated options in Mongoose v7+
+  .connect(MONGO_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      listRoutes(app); // Log all routes after server starts
     });
   })
   .catch(err => {
