@@ -13,4 +13,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ───── New helper function to test backend ─────
+export async function fetchTest() {
+  const res = await api.get("/auth/test-auth");
+  return res.data;
+}
+
 export default api;
