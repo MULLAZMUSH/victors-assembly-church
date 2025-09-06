@@ -1,8 +1,7 @@
-// backend/routes/events.js
 const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
-const auth = require('../middleware/auth'); // optional, protect routes
+const auth = require('../middleware/auth'); // Protect routes
 
 // ------------------ Create an event (protected) ------------------
 router.post('/', auth, async (req, res) => {
@@ -16,9 +15,10 @@ router.post('/', auth, async (req, res) => {
       date,
       creator: req.user.id
     });
-    res.status(201).json(event);
+
+    res.status(201).json({ message: 'Event created successfully', event });
   } catch (err) {
-    console.error(err.message);
+    console.error('Create event error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -26,10 +26,10 @@ router.post('/', auth, async (req, res) => {
 // ------------------ Get all events ------------------
 router.get('/', async (req, res) => {
   try {
-    const events = await Event.find().sort({ date: 1 }); // ascending by date
-    res.json(events);
+    const events = await Event.find().sort({ date: 1 });
+    res.json({ count: events.length, events });
   } catch (err) {
-    console.error(err.message);
+    console.error('Fetch events error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -39,9 +39,10 @@ router.get('/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
+
     res.json(event);
   } catch (err) {
-    console.error(err.message);
+    console.error('Fetch single event error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -52,7 +53,7 @@ router.put('/:id', auth, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
     if (event.creator.toString() !== req.user.id)
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: 'Unauthorized: Only the creator can update this event' });
 
     const { title, description, date } = req.body;
     event.title = title || event.title;
@@ -60,9 +61,9 @@ router.put('/:id', auth, async (req, res) => {
     event.date = date || event.date;
 
     await event.save();
-    res.json(event);
+    res.json({ message: 'Event updated successfully', event });
   } catch (err) {
-    console.error(err.message);
+    console.error('Update event error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -73,12 +74,12 @@ router.delete('/:id', auth, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
     if (event.creator.toString() !== req.user.id)
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: 'Unauthorized: Only the creator can delete this event' });
 
     await event.remove();
     res.json({ message: 'Event deleted successfully' });
   } catch (err) {
-    console.error(err.message);
+    console.error('Delete event error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });

@@ -8,18 +8,18 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 export default function Dashboard() {
   const [selected, setSelected] = useState("posts");
 
-  // --- Auth ---
+  // ----------------- Auth -----------------
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // --- Profile ---
+  // ----------------- Profile -----------------
   const [profile, setProfile] = useState(null);
   const [profileForm, setProfileForm] = useState({ name: "", emails: [""], picture: null });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  // --- Data ---
+  // ----------------- Data -----------------
   const [posts, setPosts] = useState([]);
   const [messages, setMessages] = useState([]);
   const [events, setEvents] = useState([]);
@@ -27,25 +27,26 @@ export default function Dashboard() {
   const [users, setUsers] = useState([]);
   const [selectedRecipient, setSelectedRecipient] = useState("");
 
-  // ----------------- API Fetch Helper with Auto Refresh -----------------
+  // ----------------- Helper: Fetch with Auto Refresh -----------------
   const fetchWithAuth = async (url, options = {}, retry = true) => {
     options.headers = options.headers || {};
     if (token) options.headers["Authorization"] = `Bearer ${token}`;
 
     let res = await fetch(url, options);
 
+    // Auto-refresh token if 401
     if (res.status === 401 && retry) {
-      // Attempt token refresh
       const refreshed = await handleTokenRefresh();
       if (refreshed) {
         options.headers["Authorization"] = `Bearer ${refreshed}`;
-        res = await fetch(url, options); // Retry original request
+        res = await fetch(url, options);
       }
     }
 
     return res;
   };
 
+  // ----------------- Token Refresh -----------------
   const handleTokenRefresh = async () => {
     if (!refreshToken) {
       handleLogout();
@@ -58,6 +59,7 @@ export default function Dashboard() {
         body: JSON.stringify({ refreshToken }),
       });
       const data = await res.json();
+
       if (res.ok && data.token) {
         localStorage.setItem("token", data.token);
         setToken(data.token);
@@ -199,12 +201,7 @@ export default function Dashboard() {
     }
   };
 
-  // ----------------- Other CRUD Handlers -----------------
-  // All existing handlers (posts, messages, events, voice chats, profile) 
-  // should now use fetchWithAuth() instead of fetch() to automatically refresh token.
-
-  // ... rest of your component code (profile, posts, messages, events, voice chat handlers)
-
+  // ----------------- Return JSX -----------------
   return (
     <div className="flex min-h-screen">
       <Sidebar
@@ -215,7 +212,31 @@ export default function Dashboard() {
         onLogin={() => setSelected("login")}
       />
       <div className="flex-1 p-4 bg-gray-100">
-        {/* Render content based on selected tab */}
+        {/* You can render content based on selected tab */}
+        {selected === "posts" && <CrudList items={posts} />}
+        {selected === "messages" && <CrudList items={messages} />}
+        {selected === "events" && <CrudList items={events} />}
+        {selected === "voiceChats" && <CrudList items={voiceChats} />}
+        {selected === "profile" && profile && <DashboardCard profile={profile} />}
+        {selected === "login" && (
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={loginForm.email}
+              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+            />
+            <button onClick={handleLogin} disabled={isLoggingIn}>
+              {isLoggingIn ? "Logging in..." : "Login"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

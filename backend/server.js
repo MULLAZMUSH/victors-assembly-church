@@ -8,18 +8,23 @@ const path = require('path');
 const app = express();
 
 // 🔹 Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 🔹 Import route files
-const authRoutes      = require('./routes/auth');
-const eventRoutes     = require('./routes/events');
-const messageRoutes   = require('./routes/messages');
-const profileRoutes   = require('./routes/profiles');
+const authRoutes = require('./routes/auth');
+const eventRoutes = require('./routes/events');
+const messageRoutes = require('./routes/messages');
+const profileRoutes = require('./routes/profiles');
 const voiceChatRoutes = require('./routes/voiceChats');
-const postsRoutes     = require('./routes/posts');      // ✅ Added posts
-const testApiRoutes   = require('./routes/testApi');
+const postsRoutes = require('./routes/posts');
+const testApiRoutes = require('./routes/testApi');
 
 // 🔹 Attach routes
 app.use('/api/auth', authRoutes);
@@ -27,10 +32,10 @@ app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/voiceChats', voiceChatRoutes);
-app.use('/api/posts', postsRoutes);                     // ✅ Mounted posts
+app.use('/api/posts', postsRoutes);
 app.use('/api/test', testApiRoutes);
 
-// 🔹 Optional: serve uploads folder if using file uploads
+// 🔹 Serve uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 🔹 Health Check
@@ -52,50 +57,47 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Global Error:', err);
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error'
+    error: err.message || 'Internal Server Error',
   });
 });
 
-// 🔹 Port & MongoDB URI
+// 🔹 MongoDB URI & Port
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Validate Mongo URI
 if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
-  console.error("❌ Invalid or missing MongoDB URI. Make sure MONGO_URI is set in your environment variables.");
+  console.error('❌ Invalid or missing MongoDB URI in environment variables.');
   process.exit(1);
 }
 
-// 🔹 Utility to log all mounted routes
+// 🔹 Simplified route logger (handles nested routers)
 const listRoutes = (appInstance) => {
-  if (!appInstance._router || !appInstance._router.stack) {
-    console.log('⚠️ No routes found');
-    return;
-  }
+  if (!appInstance || !appInstance._router) return console.log('⚠️ No routes found');
+
+  const printStack = (stack, prefix = '') => {
+    stack.forEach((layer) => {
+      if (layer.route) {
+        const methods = Object.keys(layer.route.methods)
+          .map((m) => m.toUpperCase())
+          .join(', ');
+        console.log(`  ${methods.padEnd(10)} ${prefix}${layer.route.path}`);
+      } else if (layer.name === 'router' && layer.handle.stack) {
+        const newPrefix = layer.regexp?.source
+          .replace('^\\', '/')
+          .replace('\\/?(?=\\/|$)', '')
+          .replace('(?:\\/)?$', '')
+          .replace(/\\\//g, '/')
+          .replace('^', '') || '';
+        printStack(layer.handle.stack, prefix + newPrefix);
+      }
+    });
+  };
 
   console.log('📌 Mounted Routes:');
-  appInstance._router.stack.forEach(middleware => {
-    if (middleware.route) {
-      const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase()).join(', ');
-      console.log(`  ${methods.padEnd(10)} ${middleware.route.path}`);
-    } else if (middleware.name === 'router' && middleware.regexp) {
-      const basePath = middleware.regexp.source
-        .replace('^\\', '/')
-        .replace('\\/?(?=\\/|$)', '')
-        .replace('^', '')
-        .replace('(?:\\/)?$', '')
-        .replace('\\', '');
-      middleware.handle.stack.forEach(handler => {
-        if (handler.route) {
-          const methods = Object.keys(handler.route.methods).map(m => m.toUpperCase()).join(', ');
-          console.log(`  ${methods.padEnd(10)} ${basePath}${handler.route.path}`);
-        }
-      });
-    }
-  });
+  printStack(appInstance._router.stack);
 };
 
-// 🔹 MongoDB Connection + Start Server
+// 🔹 Connect MongoDB + Start Server
 mongoose
   .connect(MONGO_URI)
   .then(() => {
@@ -105,7 +107,7 @@ mongoose
       listRoutes(app);
     });
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });

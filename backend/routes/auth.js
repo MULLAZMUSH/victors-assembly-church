@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
+const TokenStore = require('../models/tokenStore'); // Make sure this model exists
 require('dotenv').config();
 
 const router = express.Router();
@@ -59,7 +60,6 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
 
   const user = await User.create({ name, emails, password, picture, verified: false });
 
-  // Create JWT verification token
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
   const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${token}`;
 
@@ -102,14 +102,14 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   if (!user || !(await user.comparePassword(password))) return res.status(401).json({ error: 'Invalid credentials' });
   if (!user.verified) return res.status(403).json({ error: 'Please verify your email first' });
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
   const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-  res.json({ 
-    token, 
-    refreshToken, 
-    user: { id: user._id, name: user.name, emails: user.emails, picture: user.picture } 
-  });
+  // Store tokens in TokenStore
+  await TokenStore.create({ token, userId: user._id, type: 'access', expiresAt: new Date(Date.now() + 15*60*1000) });
+  await TokenStore.create({ token: refreshToken, userId: user._id, type: 'refresh', expiresAt: new Date(Date.now() + 7*24*60*60*1000) });
+
+  res.json({ token, refreshToken, user: { id: user._id, name: user.name, emails: user.emails, picture: user.picture } });
 }));
 
 // ───── POST /refresh ─────
@@ -118,11 +118,17 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   if (!refreshToken) return res.status(400).json({ error: 'Refresh token is required' });
 
   try {
+    const tokenExists = await TokenStore.findOne({ token: refreshToken, type: 'refresh' });
+    if (!tokenExists) return res.status(401).json({ error: 'Refresh token invalid or revoked' });
+
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Issue new access token
+    const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    await TokenStore.create({ token: newToken, userId: user._id, type: 'access', expiresAt: new Date(Date.now() + 15*60*1000) });
+
     res.json({ token: newToken });
   } catch (err) {
     console.error('Refresh token error:', err.message);
