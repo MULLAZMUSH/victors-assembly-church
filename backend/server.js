@@ -18,6 +18,7 @@ const eventRoutes     = require('./routes/events');
 const messageRoutes   = require('./routes/messages');
 const profileRoutes   = require('./routes/profiles');
 const voiceChatRoutes = require('./routes/voiceChats');
+const postsRoutes     = require('./routes/posts');      // ✅ added
 const testApiRoutes   = require('./routes/testApi');
 
 // 🔹 Attach routes
@@ -26,6 +27,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/voiceChats', voiceChatRoutes);
+app.use('/api/posts', postsRoutes);                      // ✅ mounted posts
 app.use('/api/test', testApiRoutes);
 
 // 🔹 Optional: serve uploads folder if using file uploads
@@ -64,7 +66,7 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
   process.exit(1);
 }
 
-// 🔹 Utility to log all mounted routes (safe + clean)
+// 🔹 Utility to log all mounted routes
 const listRoutes = (appInstance) => {
   if (!appInstance._router || !appInstance._router.stack) {
     console.log('⚠️ No routes found');
@@ -74,23 +76,18 @@ const listRoutes = (appInstance) => {
   console.log('📌 Mounted Routes:');
   appInstance._router.stack.forEach(middleware => {
     if (middleware.route) {
-      // Direct routes on app
-      const methods = Object.keys(middleware.route.methods)
-        .map(m => m.toUpperCase())
-        .join(', ');
+      const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase()).join(', ');
       console.log(`  ${methods.padEnd(10)} ${middleware.route.path}`);
     } else if (middleware.name === 'router' && middleware.regexp) {
       const basePath = middleware.regexp.source
         .replace('^\\', '/')
-        .replace('\\/?(?=\\/|$)', '') // cleanup regex
+        .replace('\\/?(?=\\/|$)', '')
         .replace('^', '')
         .replace('(?:\\/)?$', '')
         .replace('\\', '');
       middleware.handle.stack.forEach(handler => {
         if (handler.route) {
-          const methods = Object.keys(handler.route.methods)
-            .map(m => m.toUpperCase())
-            .join(', ');
+          const methods = Object.keys(handler.route.methods).map(m => m.toUpperCase()).join(', ');
           console.log(`  ${methods.padEnd(10)} ${basePath}${handler.route.path}`);
         }
       });
@@ -105,7 +102,7 @@ mongoose
     console.log('✅ Connected to MongoDB Atlas');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      listRoutes(app); // ✅ Log all routes on startup
+      listRoutes(app);
     });
   })
   .catch(err => {
