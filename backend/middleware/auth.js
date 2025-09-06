@@ -1,11 +1,10 @@
-// backend/middleware/auth.js
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const TokenStore = require('../models/tokenStore'); // Make sure this model exists or replace with Redis
+const TokenStore = require('../models/tokenStore'); // Replace with your token store model (MongoDB/Redis)
 
 const auth = async (req, res, next) => {
   try {
-    // 🔹 Extract token from Authorization or custom header
+    // 🔹 Extract token from Authorization header or x-auth-token
     const token =
       req.header('Authorization')?.replace('Bearer ', '') ||
       req.header('x-auth-token');
@@ -28,18 +27,21 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    // 🔹 Token reuse protection
-    const tokenExists = await TokenStore.findOne({ token });
-    if (!tokenExists) {
-      return res.status(401).json({ error: 'Token is invalid or has been revoked' });
+    // 🔹 Check token against store (to support revocation / logout)
+    if (TokenStore) {
+      const tokenExists = await TokenStore.findOne({ token });
+      if (!tokenExists) {
+        return res.status(401).json({ error: 'Token is invalid or has been revoked' });
+      }
     }
 
     // 🔹 Attach user info to request
     req.user = { id: decoded.id };
+
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
-    res.status(401).json({ error: 'Unauthorized' });
+    console.error('Auth middleware error:', err);
+    res.status(500).json({ error: 'Server error during authentication' });
   }
 };
 

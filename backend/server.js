@@ -10,7 +10,10 @@ const app = express();
 // 🔹 Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'https://victors-assembly-church-frontend.onrender.com', // deployed frontend
+    ],
     credentials: true,
   })
 );
@@ -70,7 +73,7 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
   process.exit(1);
 }
 
-// 🔹 Simplified route logger (handles nested routers)
+// 🔹 Simplified nested route logger
 const listRoutes = (appInstance) => {
   if (!appInstance || !appInstance._router) return console.log('⚠️ No routes found');
 

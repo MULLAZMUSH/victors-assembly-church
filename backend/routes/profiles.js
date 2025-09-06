@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Profile = require('../models/Profile'); // ✅ Capitalized model name
+const Profile = require('../models/Profile');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -9,7 +9,7 @@ const fs = require('fs');
 // ------------------ Multer setup for profile picture uploads ------------------
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = 'uploads/profiles/';
+    const dir = path.join(__dirname, '..', 'uploads', 'profiles');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
@@ -24,24 +24,23 @@ const upload = multer({ storage });
 // ------------------ Create or Update Profile ------------------
 router.post('/', auth, upload.single('picture'), async (req, res) => {
   try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user info' });
-    }
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized: Missing user info' });
 
-    const { bio, skills } = req.body;
+    const { bio = '', skills = '' } = req.body;
     const profileFields = {
-      user: req.user.id,
-      bio: bio || '',
-      skills: skills ? skills.split(',').map(s => s.trim()) : []
+      user: userId,
+      bio,
+      skills: typeof skills === 'string' ? skills.split(',').map(s => s.trim()).filter(Boolean) : []
     };
 
-    if (req.file) profileFields.picture = req.file.path;
+    if (req.file) profileFields.picture = path.join('uploads', 'profiles', req.file.filename);
 
-    let profile = await Profile.findOne({ user: req.user.id });
+    let profile = await Profile.findOne({ user: userId });
 
     if (profile) {
       profile = await Profile.findOneAndUpdate(
-        { user: req.user.id },
+        { user: userId },
         { $set: profileFields },
         { new: true }
       );
@@ -53,7 +52,7 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
     res.json(profile);
 
   } catch (err) {
-    console.error('Profile creation/update error:', err.message);
+    console.error('Profile creation/update error:', err);
     res.status(500).json({ message: 'Server error while saving profile' });
   }
 });
@@ -62,12 +61,13 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
 router.get('/:userId', async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.params.userId })
-      .populate('user', ['name', 'email', 'picture']); // ✅ 'email' not 'emails'
+      .populate('user', ['name', 'email', 'picture']);
 
     if (!profile) return res.status(404).json({ message: 'Profile not found' });
     res.json(profile);
+
   } catch (err) {
-    console.error('Get profile by ID error:', err.message);
+    console.error('Get profile by ID error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -78,7 +78,7 @@ router.get('/', async (req, res) => {
     const profiles = await Profile.find().populate('user', ['name', 'email', 'picture']);
     res.json(profiles);
   } catch (err) {
-    console.error('Get all profiles error:', err.message);
+    console.error('Get all profiles error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

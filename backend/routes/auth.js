@@ -28,7 +28,7 @@ const forgotPasswordLimiter = rateLimit({
 // ───── Async Handler ─────
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-// ───── Test Auth Endpoint ─────
+// ───── Test Endpoint ─────
 router.get('/test-auth', (req, res) => {
   res.json({
     message: "Auth module is reachable!",
@@ -43,10 +43,7 @@ router.get('/test-auth', (req, res) => {
   });
 });
 
-// ───── Health / Test Endpoint ─────
-router.get('/', (req, res) => {
-  res.json({ message: 'Auth API is working!' });
-});
+router.get('/', (req, res) => res.json({ message: 'Auth API is working!' }));
 
 // ───── POST /register ─────
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
@@ -125,7 +122,6 @@ router.post('/refresh', asyncHandler(async (req, res) => {
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Issue new access token
     const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
     await TokenStore.create({ token: newToken, userId: user._id, type: 'access', expiresAt: new Date(Date.now() + 15*60*1000) });
 
