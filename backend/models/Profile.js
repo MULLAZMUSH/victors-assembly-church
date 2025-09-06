@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
-const profileSchema = new mongoose.Schema({
+const ProfileSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  bio: { type: String, default: '' },
-  skills: { type: [String], default: [] },
-  resume: { type: String, default: '' } // store file path or cloud URL
+  bio: String,
+  skills: [String],
+  picture: String
 }, { timestamps: true });
 
-module.exports = mongoose.model('Profile', profileSchema);
+module.exports = mongoose.model('Profile', ProfileSchema);
