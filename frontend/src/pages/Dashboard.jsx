@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import DashboardCard from "../components/DashboardCard";
 import CrudList from "../components/CrudList";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function Dashboard() {
   const [selected, setSelected] = useState("posts");
@@ -33,7 +33,7 @@ export default function Dashboard() {
     if (!loginForm.email || !loginForm.password) return alert("Email and password required");
     setIsLoggingIn(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginForm),
@@ -69,34 +69,41 @@ export default function Dashboard() {
   useEffect(() => {
     if (token) {
       fetchProfile();
-      fetchPosts();
-      fetchMessages();
-      fetchEvents();
-      fetchVoiceChats();
-      fetchUsers();
     }
   }, [token]);
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/profiles/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/profiles/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
-        setProfileForm({ name: data.name || "", emails: data.emails || [""], picture: data.picture || null });
+        setProfileForm({
+          name: data.name || "",
+          emails: data.emails || [""],
+          picture: data.picture || null,
+        });
+        fetchAllData(); // fetch posts, messages, events, voiceChats, users
       }
     } catch (err) {
       console.error("Fetch Profile Error:", err);
     }
   };
 
+  const fetchAllData = async () => {
+    fetchPosts();
+    fetchMessages();
+    fetchEvents();
+    fetchVoiceChats();
+    fetchUsers();
+  };
+
   const fetchPosts = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/posts`);
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data);
-      }
+      const res = await fetch(`${API_URL}/posts`);
+      if (res.ok) setPosts(await res.json());
     } catch (err) {
       console.error("Fetch Posts Error:", err);
     }
@@ -104,11 +111,8 @@ export default function Dashboard() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/messages/recipient`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data);
-      }
+      const res = await fetch(`${API_URL}/messages/recipient`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setMessages(await res.json());
     } catch (err) {
       console.error("Fetch Messages Error:", err);
     }
@@ -116,11 +120,8 @@ export default function Dashboard() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/events`);
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data);
-      }
+      const res = await fetch(`${API_URL}/events`);
+      if (res.ok) setEvents(await res.json());
     } catch (err) {
       console.error("Fetch Events Error:", err);
     }
@@ -128,23 +129,19 @@ export default function Dashboard() {
 
   const fetchVoiceChats = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/voiceChats/mychats`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setVoiceChats(data);
-      }
+      const res = await fetch(`${API_URL}/voiceChats/mychats`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setVoiceChats(await res.json());
     } catch (err) {
       console.error("Fetch VoiceChats Error:", err);
     }
   };
 
   const fetchUsers = async () => {
-    if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.filter(u => u._id !== profile?._id));
+        setUsers(data.filter((u) => u._id !== profile?._id));
       }
     } catch (err) {
       console.error("Fetch Users Error:", err);
@@ -154,7 +151,7 @@ export default function Dashboard() {
   // ----------------- Profile Handlers -----------------
   const handleSaveProfile = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/profiles`, {
+      const res = await fetch(`${API_URL}/profiles`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(profileForm),
@@ -202,13 +199,12 @@ export default function Dashboard() {
   const handleCreatePost = async (content) => {
     if (!content.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/api/posts`, {
+      const res = await fetch(`${API_URL}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ title: content, content }),
       });
-      const data = await res.json();
-      setPosts([data, ...posts]);
+      if (res.ok) setPosts([await res.json(), ...posts]);
     } catch (err) {
       console.error("Create Post Error:", err);
     }
@@ -217,13 +213,15 @@ export default function Dashboard() {
   const handleEditPost = async (id, content) => {
     if (!content.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/api/posts/${id}`, {
+      const res = await fetch(`${API_URL}/posts/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ title: content, content }),
       });
-      const updated = await res.json();
-      setPosts(posts.map((p) => (p._id === id ? updated : p)));
+      if (res.ok) {
+        const updated = await res.json();
+        setPosts(posts.map((p) => (p._id === id ? updated : p)));
+      }
     } catch (err) {
       console.error("Edit Post Error:", err);
     }
@@ -231,7 +229,7 @@ export default function Dashboard() {
 
   const handleDeletePost = async (id) => {
     try {
-      await fetch(`${API_URL}/api/posts/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${API_URL}/posts/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       setPosts(posts.filter((p) => p._id !== id));
     } catch (err) {
       console.error("Delete Post Error:", err);
@@ -241,13 +239,12 @@ export default function Dashboard() {
   const handleSendMessage = async (text) => {
     if (!text.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/api/messages`, {
+      const res = await fetch(`${API_URL}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ title: text, body: text, recipient: "recipient-user-id" }),
       });
-      const data = await res.json();
-      setMessages([data, ...messages]);
+      if (res.ok) setMessages([await res.json(), ...messages]);
     } catch (err) {
       console.error("Send Message Error:", err);
     }
@@ -255,7 +252,7 @@ export default function Dashboard() {
 
   const handleDeleteMessage = async (id) => {
     try {
-      await fetch(`${API_URL}/api/messages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${API_URL}/messages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       setMessages(messages.filter((m) => m._id !== id));
     } catch (err) {
       console.error("Delete Message Error:", err);
@@ -265,13 +262,12 @@ export default function Dashboard() {
   const handleCreateEvent = async (title) => {
     if (!title.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/api/events`, {
+      const res = await fetch(`${API_URL}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ title, date: new Date().toISOString().slice(0, 10) }),
       });
-      const data = await res.json();
-      setEvents([data, ...events]);
+      if (res.ok) setEvents([await res.json(), ...events]);
     } catch (err) {
       console.error("Create Event Error:", err);
     }
@@ -279,7 +275,7 @@ export default function Dashboard() {
 
   const handleDeleteEvent = async (id) => {
     try {
-      await fetch(`${API_URL}/api/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      await fetch(`${API_URL}/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       setEvents(events.filter((e) => e._id !== id));
     } catch (err) {
       console.error("Delete Event Error:", err);
@@ -290,13 +286,12 @@ export default function Dashboard() {
   const handleStartVoiceChat = async (user_2, duration = 0) => {
     if (!user_2) return alert("Select a recipient first");
     try {
-      const res = await fetch(`${API_URL}/api/voiceChats`, {
+      const res = await fetch(`${API_URL}/voiceChats`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ user_2, duration }),
       });
-      const data = await res.json();
-      setVoiceChats([data, ...voiceChats]);
+      if (res.ok) setVoiceChats([await res.json(), ...voiceChats]);
       setSelectedRecipient("");
     } catch (err) {
       console.error("Start VoiceChat Error:", err);
@@ -493,7 +488,13 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar selected={selected} setSelected={setSelected} token={token} onLogout={handleLogout} onLogin={() => setSelected("login")} />
+      <Sidebar
+        selected={selected}
+        setSelected={setSelected}
+        token={token}
+        onLogout={handleLogout}
+        onLogin={() => setSelected("login")}
+      />
       <div className="flex-1 p-4 bg-gray-100">{renderContent()}</div>
     </div>
   );
