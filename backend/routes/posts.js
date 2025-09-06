@@ -1,7 +1,6 @@
-// backend/routes/posts.js
 const express = require('express');
 const router = express.Router();
-const Post = require('../models/Post'); // ✅ Capital P to match filename
+const Post = require('../models/Post');
 const auth = require('../middleware/auth');
 
 // ------------------ Create a new post (protected) ------------------
@@ -22,7 +21,7 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(populated);
   } catch (err) {
     console.error('Create Post Error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error while creating post' });
   }
 });
 
@@ -36,7 +35,19 @@ router.get('/', async (req, res) => {
     res.json(posts);
   } catch (err) {
     console.error('Get Posts Error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error while fetching posts' });
+  }
+});
+
+// ------------------ Get a single post by ID (public) ------------------
+router.get('/:id', async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).populate('user', ['name', 'email']);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    res.json(post);
+  } catch (err) {
+    console.error('Get Single Post Error:', err.message);
+    res.status(500).json({ error: 'Server error while fetching post' });
   }
 });
 
@@ -50,21 +61,22 @@ router.get('/me', auth, async (req, res) => {
     res.json(posts);
   } catch (err) {
     console.error('Get My Posts Error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error while fetching your posts' });
   }
 });
 
 // ------------------ Update a post (protected) ------------------
 router.put('/:id', auth, async (req, res) => {
-  const { content } = req.body;
+  const { title, content } = req.body;
 
   try {
-    let post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post not found' });
     if (post.user.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: 'Unauthorized to update this post' });
     }
 
+    post.title = title || post.title;
     post.content = content || post.content;
     await post.save();
 
@@ -72,7 +84,7 @@ router.put('/:id', auth, async (req, res) => {
     res.json(populated);
   } catch (err) {
     console.error('Update Post Error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error while updating post' });
   }
 });
 
@@ -82,15 +94,16 @@ router.delete('/:id', auth, async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: 'Post not found' });
     if (post.user.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: 'Unauthorized to delete this post' });
     }
 
     await post.deleteOne();
     res.json({ message: 'Post deleted successfully' });
   } catch (err) {
     console.error('Delete Post Error:', err.message);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error while deleting post' });
   }
 });
 
+module.exports = router;
 module.exports = router;

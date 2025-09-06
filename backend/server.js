@@ -18,7 +18,7 @@ const eventRoutes     = require('./routes/events');
 const messageRoutes   = require('./routes/messages');
 const profileRoutes   = require('./routes/profiles');
 const voiceChatRoutes = require('./routes/voiceChats');
-const postsRoutes     = require('./routes/posts');      // ✅ added
+const postsRoutes     = require('./routes/posts');      // ✅ Added posts
 const testApiRoutes   = require('./routes/testApi');
 
 // 🔹 Attach routes
@@ -27,7 +27,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/voiceChats', voiceChatRoutes);
-app.use('/api/posts', postsRoutes);                      // ✅ mounted posts
+app.use('/api/posts', postsRoutes);                     // ✅ Mounted posts
 app.use('/api/test', testApiRoutes);
 
 // 🔹 Optional: serve uploads folder if using file uploads

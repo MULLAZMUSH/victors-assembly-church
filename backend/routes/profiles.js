@@ -1,8 +1,7 @@
-// backend/routes/profile.js
 const express = require('express');
 const router = express.Router();
-const profile = require('../models/profile');
-const auth = require('../middleware/auth'); // Protect routes
+const Profile = require('../models/Profile'); // ✅ Capitalized model name
+const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -15,6 +14,7 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: function (req, file, cb) {
+    if (!req.user || !req.user.id) return cb(new Error('Missing user ID'));
     cb(null, `${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
   }
 });
@@ -24,6 +24,10 @@ const upload = multer({ storage });
 // ------------------ Create or Update Profile ------------------
 router.post('/', auth, upload.single('picture'), async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized: Missing user info' });
+    }
+
     const { bio, skills } = req.body;
     const profileFields = {
       user: req.user.id,
@@ -36,7 +40,6 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
     let profile = await Profile.findOne({ user: req.user.id });
 
     if (profile) {
-      // Update existing
       profile = await Profile.findOneAndUpdate(
         { user: req.user.id },
         { $set: profileFields },
@@ -45,37 +48,38 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
       return res.json(profile);
     }
 
-    // Create new profile
     profile = new Profile(profileFields);
     await profile.save();
     res.json(profile);
 
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Profile creation/update error:', err.message);
+    res.status(500).json({ message: 'Server error while saving profile' });
   }
 });
 
 // ------------------ Get profile by user ID ------------------
 router.get('/:userId', async (req, res) => {
   try {
-    const profile = await Profile.findOne({ user: req.params.userId }).populate('user', ['name', 'emails', 'picture']);
-    if (!profile) return res.status(404).json({ msg: 'Profile not found' });
+    const profile = await Profile.findOne({ user: req.params.userId })
+      .populate('user', ['name', 'email', 'picture']); // ✅ 'email' not 'emails'
+
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
     res.json(profile);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Get profile by ID error:', err.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 // ------------------ Get all profiles ------------------
 router.get('/', async (req, res) => {
   try {
-    const profiles = await Profile.find().populate('user', ['name', 'emails', 'picture']);
+    const profiles = await Profile.find().populate('user', ['name', 'email', 'picture']);
     res.json(profiles);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Get all profiles error:', err.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

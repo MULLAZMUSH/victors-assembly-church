@@ -1,4 +1,3 @@
-// backend/routes/auth.js
 const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -37,7 +36,8 @@ router.get('/test-auth', (req, res) => {
       login: "/api/auth/login [POST]",
       forgotPassword: "/api/auth/forgot-password [POST]",
       resetPassword: "/api/auth/reset-password/:token [POST]",
-      verifyEmail: "/api/auth/verify/:token [GET]"
+      verifyEmail: "/api/auth/verify/:token [GET]",
+      refreshToken: "/api/auth/refresh [POST]"
     }
   });
 });
@@ -63,7 +63,6 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
   const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${token}`;
 
-  // Log verification link clearly for Render logs
   console.log(`\n✅ New user registered: ${emails.join(', ')}`);
   console.log(`🔗 Verification link: ${verifyUrl}\n`);
 
@@ -104,7 +103,31 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   if (!user.verified) return res.status(403).json({ error: 'Please verify your email first' });
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token, user: { id: user._id, name: user.name, emails: user.emails, picture: user.picture } });
+  const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+  res.json({ 
+    token, 
+    refreshToken, 
+    user: { id: user._id, name: user.name, emails: user.emails, picture: user.picture } 
+  });
+}));
+
+// ───── POST /refresh ─────
+router.post('/refresh', asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'Refresh token is required' });
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error('Refresh token error:', err.message);
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
+  }
 }));
 
 // ───── POST /forgot-password ─────
@@ -140,7 +163,7 @@ router.post('/reset-password/:token', asyncHandler(async (req, res) => {
 
     if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
 
-    user.password = password; // hashed by schema middleware
+    user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
