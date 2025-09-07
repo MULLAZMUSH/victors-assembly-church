@@ -53,20 +53,22 @@ app.use('/api/test', testApiRoutes);
 // 🔹 Serve uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 🔹 Health Check & Root Endpoint
+// 🔹 Health Check & Root
 app.get('/health', (req, res) => res.status(200).json({ status: 'OK', uptime: process.uptime() }));
 app.get('/', (req, res) => res.send('API is live and running!'));
 
-// 🔹 404 Fallback
+// 🔹 404 Fallback Route
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 
-// 🔹 Global Error Handler
+// 🔹 Global Error Handling Middleware
 app.use((err, req, res, next) => {
-  console.error('Global Error:', err);
-  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+  console.error('Global Error:', err.message || err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+  });
 });
 
-// 🔹 MongoDB Connection & Server Start
+// 🔹 MongoDB URI & Port
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -75,13 +77,12 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
   process.exit(1);
 }
 
+// 🔹 Connect MongoDB + Start Server
 mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);
