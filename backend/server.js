@@ -11,8 +11,7 @@ const app = express();
 app.use(
   cors({
     origin: [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      'https://victors-assembly-church-frontend.onrender.com', // deployed frontend
+      process.env.FRONTEND_URL || 'https://victors-assembly-church-frontend.onrender.com', // deployed frontend
     ],
     credentials: true,
   })
