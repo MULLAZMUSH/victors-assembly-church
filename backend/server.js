@@ -7,20 +7,9 @@ const path = require('path');
 // 🔹 Initialize Express
 const app = express();
 
-<<<<<<< HEAD
-// 🔹 Middleware
-app.use(
-  cors({
-    origin: [
-      process.env.FRONTEND_URL || 'https://victors-assembly-church-frontend.onrender.com', // deployed frontend
-    ],
-    credentials: true,
-  })
-);
-=======
 // 🔹 CORS Configuration
 const allowedOrigins = [
-  'https://victors-assembly-church-frontend.onrender.com',
+  process.env.FRONTEND_URL || 'https://victors-assembly-church-frontend.onrender.com',
   'http://localhost:5173' // optional for local dev
 ];
 
@@ -41,7 +30,6 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight requests
 
 // 🔹 Body Parsers
->>>>>>> 2c176e9 (fix: update server CORS and dashboard API integration)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
