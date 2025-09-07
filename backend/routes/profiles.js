@@ -57,15 +57,27 @@ router.post('/', auth, upload.single('picture'), async (req, res) => {
   }
 });
 
+// ------------------ Get current user's profile ------------------
+router.get('/me', auth, async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ user: req.user.id })
+      .populate('user', ['name', 'email', 'picture']);
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
+    res.json(profile);
+  } catch (err) {
+    console.error('Get current profile error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // ------------------ Get profile by user ID ------------------
-router.get('/:userId', async (req, res) => {
+router.get('/user/:userId', async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.params.userId })
       .populate('user', ['name', 'email', 'picture']);
 
     if (!profile) return res.status(404).json({ message: 'Profile not found' });
     res.json(profile);
-
   } catch (err) {
     console.error('Get profile by ID error:', err);
     res.status(500).json({ message: 'Server error' });
