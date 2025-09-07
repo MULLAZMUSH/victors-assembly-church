@@ -10,7 +10,7 @@ const app = express();
 // 🔹 CORS Configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://victors-assembly-church-frontend.onrender.com',
-  'http://localhost:5173' // optional for local dev
+  'http://localhost:5173'
 ];
 
 const corsOptions = {
@@ -26,8 +26,10 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
+// 🔹 Apply CORS Middleware
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests
+app.options('*', cors(corsOptions)); // Global preflight
+app.options('/api/profiles/me', cors(corsOptions)); // Explicit preflight fix
 
 // 🔹 Body Parsers
 app.use(express.json({ limit: '10mb' }));
@@ -64,8 +66,8 @@ app.get('/', (req, res) => {
   res.send('API is live and running!');
 });
 
-// 🔹 404 Fallback Route
-app.use((req, res) => {
+// 🔹 404 Fallback Route (Express v5 safe)
+app.all('/*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
