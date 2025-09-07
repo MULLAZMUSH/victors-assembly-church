@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const TokenStore = require('../models/tokenStore'); // Replace with your token store model (MongoDB/Redis)
+const TokenStore = require('../models/tokenStore'); // Ensure this model exists
 
 const auth = async (req, res, next) => {
   try {
@@ -27,7 +27,7 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    // 🔹 Check token against store (to support revocation / logout)
+    // 🔹 Check token against store (optional: supports revocation / logout)
     if (TokenStore) {
       const tokenExists = await TokenStore.findOne({ token });
       if (!tokenExists) {
@@ -40,7 +40,7 @@ const auth = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err);
+    console.error('Auth middleware error:', err.message);
     res.status(500).json({ error: 'Server error during authentication' });
   }
 };
