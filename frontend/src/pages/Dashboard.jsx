@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import DashboardCard from "../components/DashboardCard";
 import CrudList from "../components/CrudList";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://victors-assembly-backend.onrender.com/api";
 
 export default function Dashboard() {
   const [selected, setSelected] = useState("posts");
