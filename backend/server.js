@@ -7,31 +7,16 @@ const path = require('path');
 // 🔹 Initialize Express
 const app = express();
 
-// 🔹 CORS Configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'https://victors-assembly-church-frontend.onrender.com',
-  'http://localhost:5173'
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-// 🔹 Apply CORS Middleware
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Global preflight
-app.options('/api/profiles/me', cors(corsOptions)); // Explicit preflight fix
-
-// 🔹 Body Parsers
+// 🔹 Middleware
+app.use(
+  cors({
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'https://victors-assembly-church-frontend.onrender.com', // deployed frontend
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -66,8 +51,8 @@ app.get('/', (req, res) => {
   res.send('API is live and running!');
 });
 
-// 🔹 404 Fallback Route (Express v5 safe)
-app.all('/*', (req, res) => {
+// 🔹 404 Fallback Route
+app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
