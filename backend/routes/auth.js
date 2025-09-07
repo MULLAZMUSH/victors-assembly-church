@@ -6,30 +6,29 @@ const User = require('../models/User');
 let TokenStore;
 
 try {
-  TokenStore = require('../models/tokenStore'); // Optional: only if you’ve created this model
+  TokenStore = require('../models/tokenStore'); // Optional
 } catch (err) {
   console.warn('⚠️ TokenStore model not found. Refresh tokens will not be persisted.');
 }
 
 require('dotenv').config();
-
 const router = express.Router();
 
 // ───── Rate Limiting ─────
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
-  message: 'Too many signup attempts, please try again later.'
+  message: { error: 'Too many signup attempts, please try again later.' }
 });
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: 'Too many login attempts, please try again later.'
+  message: { error: 'Too many login attempts, please try again later.' }
 });
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
-  message: 'Too many password reset requests, please try again later.'
+  message: { error: 'Too many password reset requests, please try again later.' }
 });
 
 // ───── Async Handler ─────
@@ -54,6 +53,7 @@ router.get('/test-auth', (req, res) => {
 // ───── POST /register ─────
 router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
   const { name, email, password, picture } = req.body;
+
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required' });
   }
@@ -63,13 +63,14 @@ router.post('/register', registerLimiter, asyncHandler(async (req, res) => {
 
   const user = await User.create({ name, email, password, picture, verified: false });
 
+  // Create email verification token
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
   const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/${token}`;
 
   console.log(`✅ User registered: ${email}`);
   console.log(`🔗 Verification link: ${verifyUrl}`);
 
-  res.json({ message: 'Registration successful! Check server logs for verification link.' });
+  res.json({ message: 'Registration successful! Check email for verification link.' });
 }));
 
 // ───── GET /verify/:token ─────
@@ -77,12 +78,13 @@ router.get('/verify/:token', asyncHandler(async (req, res) => {
   try {
     const decoded = jwt.verify(req.params.token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
 
+    if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.verified) return res.json({ message: 'Email already verified.' });
 
     user.verified = true;
     await user.save();
+
     res.json({ message: 'Email verified successfully. You can now log in.' });
   } catch (err) {
     res.status(400).json({ error: 'Invalid or expired token' });
@@ -105,11 +107,15 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
 
   // Optional: save tokens if TokenStore exists
   if (TokenStore) {
-    await TokenStore.create({ token, userId: user._id, type: 'access', expiresAt: Date.now() + 15*60*1000 });
-    await TokenStore.create({ token: refreshToken, userId: user._id, type: 'refresh', expiresAt: Date.now() + 7*24*60*60*1000 });
+    await TokenStore.create({ token, userId: user._id, type: 'access', expiresAt: Date.now() + 15 * 60 * 1000 });
+    await TokenStore.create({ token: refreshToken, userId: user._id, type: 'refresh', expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 });
   }
 
-  res.json({ token, refreshToken, user: { id: user._id, name: user.name, email: user.email, picture: user.picture } });
+  res.json({
+    token,
+    refreshToken,
+    user: { id: user._id, name: user.name, email: user.email, picture: user.picture }
+  });
 }));
 
 // ───── POST /refresh ─────
@@ -129,7 +135,7 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 
     const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
     if (TokenStore) {
-      await TokenStore.create({ token: newToken, userId: user._id, type: 'access', expiresAt: Date.now() + 15*60*1000 });
+      await TokenStore.create({ token: newToken, userId: user._id, type: 'access', expiresAt: Date.now() + 15 * 60 * 1000 });
     }
 
     res.json({ token: newToken });
@@ -141,10 +147,10 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 // ───── POST /forgot-password ─────
 router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ message: 'Email is required' });
+  if (!email) return res.status(400).json({ error: 'Email is required' });
 
   const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (!user) return res.status(404).json({ error: 'User not found' });
 
   const resetToken = user.generatePasswordReset();
   await user.save();
@@ -152,14 +158,14 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(async (req, 
   const url = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
   console.log(`🔑 Password reset link for ${email}: ${url}`);
 
-  res.json({ message: 'Password reset link generated. Check server logs.' });
+  res.json({ message: 'Password reset link generated. Check your email.' });
 }));
 
 // ───── POST /reset-password/:token ─────
 router.post('/reset-password/:token', asyncHandler(async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
-  if (!password) return res.status(400).json({ message: 'Password is required' });
+  if (!password) return res.status(400).json({ error: 'Password is required' });
 
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
   const user = await User.findOne({
@@ -167,7 +173,7 @@ router.post('/reset-password/:token', asyncHandler(async (req, res) => {
     resetPasswordExpires: { $gt: Date.now() }
   }).select('+password');
 
-  if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+  if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
   user.password = password;
   user.resetPasswordToken = undefined;
