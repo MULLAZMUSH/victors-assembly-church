@@ -9,8 +9,8 @@ const app = express();
 
 // 🔹 CORS Configuration
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'https://victors-assembly-church-frontend.onrender.com',
+  process.env.FRONTEND_URL || "https://victors-assembly-church-frontend.onrender.com",
+ "http://localhost:5173",
 ];
 
 const corsOptions = {
