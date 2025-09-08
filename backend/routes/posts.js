@@ -31,11 +31,24 @@ router.get('/', async (req, res) => {
     const posts = await Post.find()
       .populate('user', ['name', 'email'])
       .sort({ createdAt: -1 });
-
     res.json(posts);
   } catch (err) {
     console.error('Get Posts Error:', err.message);
     res.status(500).json({ error: 'Server error while fetching posts' });
+  }
+});
+
+// ------------------ Get my posts (protected) ------------------
+// Must come BEFORE /:id
+router.get('/me', auth, async (req, res) => {
+  try {
+    const posts = await Post.find({ user: req.user.id })
+      .populate('user', ['name', 'email'])
+      .sort({ createdAt: -1 });
+    res.json(posts);
+  } catch (err) {
+    console.error('Get My Posts Error:', err.message);
+    res.status(500).json({ error: 'Server error while fetching your posts' });
   }
 });
 
@@ -48,20 +61,6 @@ router.get('/:id', async (req, res) => {
   } catch (err) {
     console.error('Get Single Post Error:', err.message);
     res.status(500).json({ error: 'Server error while fetching post' });
-  }
-});
-
-// ------------------ Get my posts (protected) ------------------
-router.get('/me', auth, async (req, res) => {
-  try {
-    const posts = await Post.find({ user: req.user.id })
-      .populate('user', ['name', 'email'])
-      .sort({ createdAt: -1 });
-
-    res.json(posts);
-  } catch (err) {
-    console.error('Get My Posts Error:', err.message);
-    res.status(500).json({ error: 'Server error while fetching your posts' });
   }
 });
 
@@ -105,5 +104,4 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
 module.exports = router;
