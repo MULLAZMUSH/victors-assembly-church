@@ -29,7 +29,7 @@ const voiceChatRoutes = require('./routes/voiceChats');
 const postsRoutes = require('./routes/posts');
 const testApiRoutes = require('./routes/testApi');
 
-// 🔹 Attach routes with safety wrapper
+// 🔹 Attach routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
@@ -42,13 +42,19 @@ app.use('/api/test', testApiRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 🔹 Health Check
-app.get('/health', (req, res) => res.status(200).json({ status: 'OK', uptime: process.uptime() }));
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', uptime: process.uptime() });
+});
 
 // 🔹 Root Endpoint
-app.get('/', (req, res) => res.send('API is live and running!'));
+app.get('/', (req, res) => {
+  res.send('API is live and running!');
+});
 
 // 🔹 404 Fallback Route
-app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
 // 🔹 Global Error Handling Middleware
 app.use((err, req, res, next) => {
@@ -69,7 +75,7 @@ if (!MONGO_URI || !/^mongodb(\+srv)?:\/\//.test(MONGO_URI)) {
 
 // 🔹 Simplified nested route logger
 const listRoutes = (appInstance) => {
-  if (!appInstance?._router) return console.log('⚠️ No routes found');
+  if (!appInstance || !appInstance._router) return console.log('⚠️ No routes found');
 
   const printStack = (stack, prefix = '') => {
     stack.forEach((layer) => {
