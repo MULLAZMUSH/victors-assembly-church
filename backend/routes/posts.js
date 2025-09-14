@@ -1,80 +1,95 @@
 // backend/routes/posts.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const post = require('../models/Post');
-const auth = require('../middleware/auth');
+const Post = require("../models/Post"); // ✅ Correct model import
+const auth = require("../middleware/auth");
 
 // ------------------ Create a new post (protected) ------------------
-router.post('/', auth, async (req, res) => {
+router.post("/", auth, async (req, res) => {
   const { title, content } = req.body;
-  if (!title || !content) return res.status(400).json({ error: 'Title and content are required' });
+  if (!title || !content) {
+    return res.status(400).json({ error: "Title and content are required" });
+  }
 
   try {
-    const post = await Post.create({
+    const newPost = await Post.create({
       title,
       content,
-      user: req.user.id
+      user: req.user.id,
     });
-    const populated = await post.populate('user', ['name', 'email']);
+    const populated = await newPost.populate("user", ["name", "email"]);
     res.status(201).json(populated);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Create post error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 // ------------------ Get all posts (public) ------------------
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const posts = await Post.find().populate('user', ['name', 'email']).sort({ createdAt: -1 });
+    const posts = await Post.find()
+      .populate("user", ["name", "email"])
+      .sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Get all posts error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 // ------------------ Get my posts (protected) ------------------
-router.get('/me', auth, async (req, res) => {
+router.get("/me", auth, async (req, res) => {
   try {
-    const posts = await Post.find({ user: req.user.id }).populate('user', ['name', 'email']).sort({ createdAt: -1 });
+    const posts = await Post.find({ user: req.user.id })
+      .populate("user", ["name", "email"])
+      .sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Get my posts error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 // ------------------ Update a post (protected) ------------------
-router.put('/:id', auth, async (req, res) => {
-  const { content } = req.body;
+router.put("/:id", auth, async (req, res) => {
+  const { content, title } = req.body;
+
   try {
     let post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
-    if (post.user.toString() !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
-    post.content = content || post.content;
+    if (post.user.toString() !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    if (content) post.content = content;
+    if (title) post.title = title;
+
     await post.save();
-    const populated = await post.populate('user', ['name', 'email']);
+    const populated = await post.populate("user", ["name", "email"]);
     res.json(populated);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Update post error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 // ------------------ Delete a post (protected) ------------------
-router.delete('/:id', auth, async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
-    if (post.user.toString() !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
-    await post.remove();
-    res.json({ message: 'Post deleted successfully' });
+    if (post.user.toString() !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await Post.findByIdAndDelete(req.params.id); // ✅ use findByIdAndDelete
+    res.json({ message: "Post deleted successfully" });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Delete post error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
