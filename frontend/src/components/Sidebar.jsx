@@ -1,11 +1,12 @@
+// src/components/Sidebar.jsx
 import React from "react";
-import { FaMicrophone } from "react-icons/fa"; // react-icons for voice chat icon
+import { FaMicrophone } from "react-icons/fa"; // ✅ correct import
 
 const tabs = [
   { key: "posts", label: "Posts" },
   { key: "messages", label: "Messages" },
   { key: "events", label: "Events" },
-  { key: "voiceChats", label: "Voice Chats", icon: <FaMicrophone /> }, // added icon
+  { key: "voiceChats", label: "Voice Chats", icon: <FaMicrophone /> },
   { key: "profile", label: "Profile" },
 ];
 
@@ -18,39 +19,39 @@ export default function Sidebar({ selected, setSelected, token, onLogout, onLogi
           <button
             type="button"
             onClick={onLogout}
-            className="flex-1 mr-1 px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            className="flex-1 px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
           >
             Logout
           </button>
         ) : (
-          <>
+          <div className="flex gap-2 w-full">
             <button
               type="button"
               onClick={onLogin}
-              className="flex-1 mr-1 px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              className="flex-1 px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => setSelected("register")}
-              className="flex-1 ml-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              className="flex-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               Register
             </button>
-          </>
+          </div>
         )}
       </div>
 
       {/* --- Navigation Tabs --- */}
       {token && (
-        <div>
+        <div className="flex flex-col">
           <h2 className="text-xl font-bold mb-4">Dashboard</h2>
           <nav className="flex flex-col space-y-2">
             {tabs.map((tab) => (
               <button
-                type="button"
                 key={tab.key}
+                type="button"
                 onClick={() => setSelected(tab.key)}
                 className={`flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-200 ${
                   selected === tab.key
@@ -61,7 +62,7 @@ export default function Sidebar({ selected, setSelected, token, onLogout, onLogi
                 }`}
               >
                 {tab.icon && <span>{tab.icon}</span>}
-                {tab.label}
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>
