@@ -5,64 +5,84 @@ const crypto = require("crypto");
 
 const UserSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+    },
 
-    // Use a single unique email instead of array
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       lowercase: true,
       trim: true,
       unique: true,
+      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
 
-    password: { type: String, required: true, select: false },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: 6,
+      select: false, // don’t return password by default
+    },
+
     bio: { type: String, default: "" },
     verified: { type: Boolean, default: false },
 
-    // Profile picture
+    // optional profile picture
     picture: { type: String, default: null },
 
-    // Password reset fields
-    resetPasswordToken: { type: String },
-    resetPasswordExpires: { type: Date },
+    // password reset
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );
 
-// 🔹 Hash password before saving
+/**
+ * Hash password before saving
+ */
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   try {
-    this.password = await bcrypt.hash(this.password, 10);
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (err) {
     next(err);
   }
 });
 
-// 🔹 Compare password method
-UserSchema.methods.comparePassword = async function (candidatePassword) {
+/**
+ * Compare a candidate password with the stored hash
+ */
+UserSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// 🔹 Generate password reset token
+/**
+ * Generate a password reset token and set expiry
+ */
 UserSchema.methods.generatePasswordReset = function () {
   const resetToken = crypto.randomBytes(32).toString("hex");
 
-  // Hash the token before saving in DB
   this.resetPasswordToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
-  this.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 min
 
-  return resetToken; // return raw token for email link
+  // expires in 15 minutes
+  this.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+  return resetToken;
 };
 
-// 🔹 Hide sensitive fields in responses
+/**
+ * Customize JSON output (hide sensitive fields)
+ */
 UserSchema.set("toJSON", {
-  transform: (doc, ret) => {
+  transform: (_, ret) => {
     delete ret.password;
     delete ret.resetPasswordToken;
     delete ret.resetPasswordExpires;
