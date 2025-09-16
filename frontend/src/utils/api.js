@@ -1,67 +1,66 @@
-// src/api.js
 import axios from "axios";
-import toast from "react-hot-toast"; // or your preferred toast lib
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true, // for cookie-based auth if needed
 });
 
-// Request interceptor: attach access token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// ───── Request Interceptor ─────
+// Attach JWT token from localStorage if it exists
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Response interceptor: handle errors and refresh token
+// ───── Response Interceptor ─────
+// Handles token refresh automatically if access token expires
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    const status = error.response?.status;
+  (res) => res,
+  async (err) => {
+    const originalRequest = err.config;
 
-    // Handle unauthorized: try refresh token
-    if (status === 401 && !originalRequest._retry) {
+    // If 401 (Unauthorized) and we haven't retried yet
+    if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      try {
-        const res = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        const newToken = res.data.token;
-        localStorage.setItem("token", newToken);
-        originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-        return api(originalRequest); // retry original request
-      } catch (refreshError) {
-        localStorage.removeItem("token");
-        toast.error("Session expired. Please log in again.");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
+
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) {
+        try {
+          // Request new token from backend
+          const { data } = await axios.post(
+            `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth/refresh`,
+            { refreshToken }
+          );
+
+          // Save new token
+          localStorage.setItem("token", data.token);
+
+          // Update default headers for next requests
+          api.defaults.headers.Authorization = `Bearer ${data.token}`;
+
+          // Retry the original request
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error("🔴 Refresh token failed:", refreshError);
+
+          // Cleanup and redirect to login
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          window.location.href = "/login";
+        }
       }
     }
 
-    // Network or CORS error
-    if (error.message === "Network Error" || !error.response) {
-      toast.error("Network issue. Please check your connection.");
-    }
-
-    // Other errors
-    if (status >= 400 && status < 500) {
-      toast.error(error.response?.data?.message || "Request failed.");
-    }
-
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );
+
+// ───── New helper function to test backend ─────
+export async function fetchTest() {
+  const res = await api.get("/auth/test-auth");
+  return res.data;
+}
 
 export default api;
