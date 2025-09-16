@@ -9,7 +9,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 
-// Dashboard sections (if you ever want nested routes)
+// Dashboard sections (optional nested routes)
 import Posts from "./components/Posts";
 import Profile from "./components/Profile";
 import Events from "./components/Events";
@@ -42,7 +42,7 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          {/* Optional nested routes (if you want URLs like /dashboard/posts) */}
+          {/* Optional nested routes */}
           <Route path="posts" element={<Posts />} />
           <Route path="profile" element={<Profile />} />
           <Route path="events" element={<Events />} />
